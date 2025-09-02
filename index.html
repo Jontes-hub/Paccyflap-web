@@ -1,14 +1,14 @@
 <html lang="en-us"><script src="https://pygame-web.github.io/archives/0.9/pythons.js" type=module id=site data-LINES=57 data-CONSOLE=25 data-python=python3.12 data-os=vtx,fs,snd,gui async defer>#<!--
 
 print("""
-Loading paccyflapv2 from paccyflapv2.apk
+Loading paccyflapv1-web from paccyflapv1-web.apk
     Pygbag Version : 0.9.2
     Template Version : 0.9.0
     Python  : 3.12
     CDN URL : https://pygame-web.github.io/archives/0.9/
     Screen  : 1280x720
-    Title   : paccyflapv2
-    Folder  : paccyflapv2
+    Title   : paccyflapv1-web
+    Folder  : paccyflapv1-web
     Authors : pgw
     SPDX-License-Identifier: cookiecutter.spdx
 
@@ -84,12 +84,12 @@ async def custom_site():
 
 
 
-    apk = "paccyflapv2.apk"
+    apk = "paccyflapv1-web.apk"
 
-    bundle = "paccyflapv2"
+    bundle = "paccyflapv1-web"
 
     # the C or js loader could do that but be explicit.
-    appdir = Path(f"/data/data/{bundle}") # /data/data/paccyflapv2
+    appdir = Path(f"/data/data/{bundle}") # /data/data/paccyflapv1-web
     appdir.mkdir()
 
 
@@ -239,7 +239,7 @@ config = {
     user_canvas_managed : 0,
     ume_block : 1,
     can_close : 0,
-    archive : "paccyflapv2",
+    archive : "paccyflapv1-web",
     gui_debug : 3,
     cdn : "https://pygame-web.github.io/archives/0.9/",
     autorun : 0,
@@ -248,7 +248,135 @@ config = {
 
 </script>
 
-    <title>paccyflapv2</title>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, doc, getDoc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsg29QXBXh0XyHa-jLOuLzSwohH9h0ZeU",
+            authDomain: "paccyflapv1.firebaseapp.com",
+            projectId: "paccyflapv1",
+            storageBucket: "paccyflapv1.firebasestorage.app",
+            messagingSenderId: "1005957055731",
+            appId: "1:1005957055731:web:8086c53b8f9af00971e386"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Global Firebase functions that Python can call
+        window.firebaseFunctions = {
+            initialized: false,
+            globalHighscore: 0,
+
+            async initialize() {
+                try {
+                    console.log("Initialiserar Firebase...");
+                    await this.fetchGlobalHighscore();
+                    this.initialized = true;
+                    console.log("Firebase initialiserat framgångsrikt!");
+                    return true;
+                } catch (error) {
+                    console.error("Firebase initialization error:", error);
+                    this.initialized = false;
+                    return false;
+                }
+            },
+
+            async fetchGlobalHighscore() {
+                try {
+                    console.log("Hämtar global highscore...");
+                    const docRef = doc(db, "scores", "globalHighScore");
+                    const docSnap = await getDoc(docRef);
+
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        this.globalHighscore = data.value || 0;
+                        console.log("Global highscore hämtad:", this.globalHighscore);
+                    } else {
+                        console.log("Ingen global highscore hittad, skapar ny...");
+                        this.globalHighscore = 0;
+                        await setDoc(docRef, { value: 0 });
+                    }
+                    return this.globalHighscore;
+                } catch (error) {
+                    console.error("Fel vid hämtning av global highscore:", error);
+                    return this.globalHighscore;
+                }
+            },
+
+            async updateGlobalHighscore(newScore) {
+                try {
+                    if (!this.initialized) {
+                        console.log("Firebase inte initialiserat, hoppar över uppdatering");
+                        return false;
+                    }
+
+                    if (newScore <= this.globalHighscore) {
+                        console.log("Ny poäng inte högre än befintlig global highscore");
+                        return false;
+                    }
+
+                    console.log("Uppdaterar global highscore till:", newScore);
+                    const docRef = doc(db, "scores", "globalHighScore");
+                    
+                    // Dubbelkolla att vi inte skriver över en högre poäng
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const currentScore = docSnap.data().value || 0;
+                        if (newScore <= currentScore) {
+                            this.globalHighscore = currentScore;
+                            return false;
+                        }
+                    }
+
+                    await updateDoc(docRef, { value: newScore });
+                    this.globalHighscore = newScore;
+                    console.log("Global highscore uppdaterad framgångsrikt!");
+                    return true;
+                } catch (error) {
+                    console.error("Fel vid uppdatering av global highscore:", error);
+                    // Försök igen med setDoc om updateDoc misslyckas
+                    try {
+                        const docRef = doc(db, "scores", "globalHighScore");
+                        await setDoc(docRef, { value: newScore });
+                        this.globalHighscore = newScore;
+                        console.log("Global highscore skapad med setDoc");
+                        return true;
+                    } catch (retryError) {
+                        console.error("Retry med setDoc misslyckades också:", retryError);
+                        return false;
+                    }
+                }
+            },
+
+            getGlobalHighscore() {
+                return this.globalHighscore;
+            },
+
+            isInitialized() {
+                return this.initialized;
+            }
+        };
+
+        // Automatisk initialisering
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                window.firebaseFunctions.initialize().then(success => {
+                    if (success) {
+                        console.log("Firebase redo att användas!");
+                    } else {
+                        console.log("Firebase initialisering misslyckades, fortsätter utan");
+                    }
+                });
+            }, 1000); // Vänta 1 sekund efter load
+        });
+    </script>
+
+    <title>paccyflapv1-web</title>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
